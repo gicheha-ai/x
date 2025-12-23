@@ -1,0 +1,308 @@
+.airtel-money-payment {
+  background: white;
+  border-radius: 10px;
+  padding: 25px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  max-width: 450px;
+  margin: 0 auto;
+}
+
+.airtel-header {
+  text-align: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.airtel-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.logo-icon {
+  font-size: 32px;
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #e30045; /* Airtel red color */
+}
+
+.airtel-info {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.airtel-form, .confirmation-step, .processing-step {
+  margin-bottom: 25px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.airtel-input {
+  width: 100%;
+  padding: 14px 15px;
+  border: 2px solid #e30045;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s;
+  background: #fff9fa;
+}
+
+.airtel-input:focus {
+  outline: none;
+  border-color: #c1003a;
+  box-shadow: 0 0 0 3px rgba(227, 0, 69, 0.1);
+}
+
+.helper-text {
+  display: block;
+  margin-top: 6px;
+  color: #6c757d;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.amount-display {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.amount-label {
+  color: #6c757d;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.amount-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #28a745;
+}
+
+.airtel-btn {
+  width: 100%;
+  padding: 16px;
+  background: #e30045;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 10px;
+}
+
+.airtel-btn:hover:not(:disabled) {
+  background: #c1003a;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(227, 0, 69, 0.2);
+}
+
+.airtel-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.confirmation-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.confirmation-header h3 {
+  color: #28a745;
+  margin-bottom: 8px;
+}
+
+.confirmation-header p {
+  color: #6c757d;
+  margin: 0;
+}
+
+.payment-details {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 25px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.detail-row span {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.detail-row strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-secondary {
+  flex: 1;
+  padding: 14px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.processing-step {
+  text-align: center;
+}
+
+.processing-spinner {
+  margin: 20px auto 30px;
+}
+
+.spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #e30045;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.processing-step h3 {
+  color: #e30045;
+  margin-bottom: 10px;
+}
+
+.processing-step p {
+  color: #6c757d;
+  margin-bottom: 20px;
+}
+
+.processing-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.processing-timer {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 20px;
+}
+
+.processing-timer p {
+  margin: 0;
+  color: #856404;
+  font-size: 14px;
+}
+
+.airtel-instructions {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 25px;
+}
+
+.airtel-instructions h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.airtel-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.airtel-instructions li {
+  margin: 10px 0;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.airtel-security {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+  color: #6c757d;
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .airtel-money-payment {
+    padding: 20px;
+  }
+  
+  .confirmation-actions {
+    flex-direction: column;
+  }
+  
+  .airtel-btn, .btn-secondary {
+    width: 100%;
+  }
+}

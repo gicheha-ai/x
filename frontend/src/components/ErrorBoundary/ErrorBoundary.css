@@ -1,0 +1,152 @@
+.error-boundary-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.error-card {
+  background: white;
+  border-radius: 15px;
+  padding: 40px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+}
+
+.error-title {
+  font-size: 28px;
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.error-message {
+  font-size: 16px;
+  color: #6c757d;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.error-details {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: left;
+  overflow: auto;
+  max-height: 200px;
+}
+
+.details-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.error-message-text {
+  font-size: 14px;
+  color: #dc3545;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.stack-trace {
+  font-size: 12px;
+  color: #6c757d;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 10px;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.retry-button, .home-button, .reload-button, .support-button {
+  border: none;
+  padding: 12px 24px;
+  border-radius: 50px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.3s;
+}
+
+.retry-button {
+  background: #007bff;
+  color: white;
+}
+
+.retry-button:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+}
+
+.home-button {
+  background: #28a745;
+  color: white;
+}
+
+.home-button:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+.reload-button {
+  background: #6c757d;
+  color: white;
+}
+
+.reload-button:hover {
+  background: #5a6268;
+  transform: translateY(-2px);
+}
+
+.help-section {
+  border-top: 1px solid #e9ecef;
+  padding-top: 20px;
+}
+
+.help-text {
+  font-size: 14px;
+  color: #6c757d;
+  margin-bottom: 15px;
+}
+
+.support-button {
+  background: transparent;
+  color: #007bff;
+  border: 2px solid #007bff;
+  padding: 10px 20px;
+}
+
+.support-button:hover {
+  background: #007bff;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .error-card {
+    padding: 20px;
+  }
+  
+  .error-actions {
+    flex-direction: column;
+  }
+  
+  .retry-button, .home-button, .reload-button {
+    width: 100%;
+  }
+}

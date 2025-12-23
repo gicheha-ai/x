@@ -1,0 +1,11 @@
+export { default as HomePage } from './HomePage';
+export { default as ProductList } from './ProductList';
+export { default as ProductDetail } from './ProductDetail';
+export { default as CartPage } from './CartPage';
+export { default as Checkout } from './Checkout';
+export { default as Login } from './Login';
+export { default as Register } from './Register';
+export { default as Dashboard } from './Dashboard';
+export { default as AffiliatePortal } from './AffiliatePortal';
+export { default as BoostSales } from './BoostSales';
+export { default as NotFound } from './NotFound';

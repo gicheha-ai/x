@@ -1,0 +1,156 @@
+.header {
+  background: #fff;
+  border-bottom: 2px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  padding: 15px 0;
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.logo {
+  cursor: pointer;
+}
+
+.logo h1 {
+  font-size: 1.8rem;
+  color: #007bff;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.search-btn, .menu-btn, .login-btn {
+  background: #f0f0f0;
+  border: 2px solid #007bff;
+  border-radius: 50px;
+  padding: 12px 25px;
+  font-size: 18px;
+  cursor: pointer;
+  color: #007bff;
+  font-weight: bold;
+  transition: all .3s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.search-btn:hover, .menu-btn:hover, .login-btn:hover {
+  background: #007bff;
+  color: #fff;
+  transform: scale(1.05);
+}
+
+.menu-btn {
+  background: #28a745;
+  border-color: #28a745;
+  color: #fff;
+}
+
+.menu-btn:hover {
+  background: #218838;
+  border-color: #218838;
+}
+
+.cart-icon {
+  position: relative;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.cart-count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #dc3545;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 15px;
+  border-radius: 50px;
+  background: #f8f9fa;
+  transition: background .3s;
+}
+
+.user-info:hover {
+  background: #e9ecef;
+}
+
+.user-avatar {
+  width: 35px;
+  height: 35px;
+  background: #007bff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .header-container {
+    padding: 0 15px;
+  }
+  
+  .search-btn, .menu-btn, .login-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+  }
+  
+  .logo h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .search-btn, .menu-btn, .login-btn {
+    padding: 8px 15px;
+    font-size: 14px;
+  }
+  
+  .user-name {
+    display: none;
+  }
+  
+  .logo h1 {
+    font-size: 1.2rem;
+  }
+}
