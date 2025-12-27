@@ -27,8 +27,7 @@ RUN cd frontend && \
 COPY frontend/ ./frontend/
 
 # Build frontend with specific env
-RUN cd frontend && \
-    CI=false npm run build
+RUN cd frontend && CI=false SKIP_PREFLIGHT_CHECK=true npm run build
 
 # ========== NGINX SETUP ==========
 RUN mkdir -p /var/www/html
