@@ -1,0 +1,95 @@
+# E-Commerce Pro Platform - Fullstack Dockerfile
+# Combined Node.js backend + React frontend with Nginx
+
+# ========== BACKEND BUILD STAGE ==========
+FROM node:18-alpine AS backend-builder
+
+WORKDIR /app/backend
+
+# Copy backend package files
+COPY backend/package*.json ./
+
+# Install backend dependencies
+RUN npm ci
+
+# Copy backend source code
+COPY backend/ .
+
+# Build backend
+RUN npm run build
+
+# Remove dev dependencies
+RUN npm prune --production
+
+# ========== FRONTEND BUILD STAGE ==========
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install frontend dependencies
+RUN npm ci --only=production
+
+# Copy frontend source code
+COPY frontend/ .
+
+# Build frontend
+RUN npm run build
+
+# ========== PRODUCTION STAGE ==========
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    nginx \
+    curl \
+    tini \
+    && mkdir -p /run/nginx
+
+# Set working directory for backend
+WORKDIR /app/backend
+
+# Create non-root users
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S backend -u 1001 -G appgroup && \
+    adduser -S frontend -u 1002 -G appgroup
+
+# Copy built backend from builder stage
+COPY --from=backend-builder --chown=backend:appgroup /app/backend/node_modules ./node_modules
+COPY --from=backend-builder --chown=backend:appgroup /app/backend/dist ./dist
+COPY --from=backend-builder --chown=backend:appgroup /app/backend/package.json ./
+
+# Copy built frontend to nginx directory
+COPY --from=frontend-builder --chown=frontend:appgroup /app/frontend/build /var/www/frontend
+
+# Copy nginx configuration
+COPY deployment/docker/nginx.fullstack.conf /etc/nginx/nginx.conf
+
+# Copy startup script
+COPY deployment/docker/start-fullstack.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+# Copy environment configuration
+COPY deployment/docker/.env.production ./.env
+
+# Set permissions
+RUN chown -R backend:appgroup /app/backend && \
+    chown -R frontend:appgroup /var/www/frontend && \
+    chown -R frontend:appgroup /var/log/nginx && \
+    chown -R frontend:appgroup /var/lib/nginx && \
+    chown -R frontend:appgroup /run/nginx
+
+# Health check (check both services)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:5000/api/health && curl -f http://localhost/ || exit 1
+
+# Expose ports
+EXPOSE 5000 80
+
+# Use tini as init process
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Start both services
+CMD ["/app/start.sh"]
