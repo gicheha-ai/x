@@ -28,8 +28,8 @@ RUN cd frontend && \
     echo 'GENERATE_SOURCEMAP=false' >> .env && \
     echo 'INLINE_RUNTIME_CHUNK=false' >> .env
 
-# Install frontend deps
-RUN cd frontend && npm install --omit=dev
+# Install frontend deps (add web-vitals)
+RUN cd frontend && npm install --omit=dev web-vitals
 
 # Fix the import path in the actual file
 RUN if [ -f "frontend/src/hooks/useAuth.js" ]; then \
@@ -47,24 +47,45 @@ RUN find frontend/src -name "*.js" -type f -exec sed -i "s|\.\./\.\./\.\./hooks/
 RUN find frontend/src -name "*.js" -type f -exec sed -i "s|\.\./\.\./hooks/useAuth|./hooks/useAuth|g" {} \; 2>/dev/null || true
 RUN find frontend/src -name "*.js" -type f -exec sed -i "s|\.\./hooks/useAuth|./hooks/useAuth|g" {} \; 2>/dev/null || true
 
-# Build frontend (will succeed now)
-RUN cd frontend && CI=false npm run build || \
-    echo "Build completed (may have warnings)"
+# Build frontend
+RUN cd frontend && CI=false npm run build 2>&1 | tail -20
 
 # ========== STEP 5: NGINX SETUP ==========
 RUN mkdir -p /var/www/html
 RUN cp -r frontend/build/* /var/www/html/ 2>/dev/null || \
     echo '<html><body><h1>Gicheha AI</h1><p>Application is running!</p></body></html>' > /var/www/html/index.html
 
-# Nginx config
-RUN echo 'events{}' > /etc/nginx/nginx.conf && \
-    echo 'http{server{listen 80;root /var/www/html;location/{try_files $uri $uri/ /index.html;}location/api{proxy_pass http://localhost:10000;}}}' >> /etc/nginx/nginx.conf
+# Nginx config - FIXED SYNTAX
+RUN echo 'events {}' > /etc/nginx/nginx.conf
+RUN echo 'http {' >> /etc/nginx/nginx.conf
+RUN echo '  server {' >> /etc/nginx/nginx.conf
+RUN echo '    listen 80;' >> /etc/nginx/nginx.conf
+RUN echo '    root /var/www/html;' >> /etc/nginx/nginx.conf
+RUN echo '    location / {' >> /etc/nginx/nginx.conf
+RUN echo '      try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
+RUN echo '    location /api {' >> /etc/nginx/nginx.conf
+RUN echo '      proxy_pass http://localhost:10000;' >> /etc/nginx/nginx.conf
+RUN echo '      proxy_set_header Host $host;' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
+RUN echo '    location /health {' >> /etc/nginx/nginx.conf
+RUN echo '      return 200 "OK";' >> /etc/nginx/nginx.conf
+RUN echo '      add_header Content-Type text/plain;' >> /etc/nginx/nginx.conf
+RUN echo '    }' >> /etc/nginx/nginx.conf
+RUN echo '  }' >> /etc/nginx/nginx.conf
+RUN echo '}' >> /etc/nginx/nginx.conf
 
 # ========== STEP 6: START SCRIPT ==========
 RUN echo '#!/bin/sh' > start.sh && \
+    echo 'echo "Starting Gicheha AI..."' >> start.sh && \
     echo 'cd /app/backend' >> start.sh && \
     echo 'node server.js &' >> start.sh && \
-    echo 'nginx -g "daemon off;"' >> start.sh && \
+    echo 'BACKEND_PID=$!' >> start.sh && \
+    echo 'echo "Backend started with PID: $BACKEND_PID"' >> start.sh && \
+    echo 'nginx -g "daemon off;" &' >> start.sh && \
+    echo 'NGINX_PID=$!' >> start.sh && \
+    echo 'echo "Nginx started with PID: $NGINX_PID"' >> start.sh && \
+    echo 'wait $BACKEND_PID $NGINX_PID' >> start.sh && \
     chmod +x start.sh
 
 # Expose port
