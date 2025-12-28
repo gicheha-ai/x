@@ -36,19 +36,35 @@ RUN echo '<p><a href="/api">Backend API</a> | <a href="/api/health">Health Check
 RUN echo '</body></html>' >> /var/www/html/index.html
 
 # ========== NGINX CONFIG ==========
-RUN echo 'events {}' > /etc/nginx/nginx.conf
+RUN echo 'events {' > /etc/nginx/nginx.conf
+RUN echo '    worker_connections 1024;' >> /etc/nginx/nginx.conf
+RUN echo '}' >> /etc/nginx/nginx.conf
+RUN echo '' >> /etc/nginx/nginx.conf
 RUN echo 'http {' >> /etc/nginx/nginx.conf
-RUN echo '  server {' >> /etc/nginx/nginx.conf
-RUN echo '    listen 80;' >> /etc/nginx/nginx.conf
-RUN echo '    root /var/www/html;' >> /etc/nginx/nginx.conf
-RUN echo '    location / {' >> /etc/nginx/nginx.conf
-RUN echo '      try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf
+RUN echo '    include /etc/nginx/mime.types;' >> /etc/nginx/nginx.conf
+RUN echo '    default_type application/octet-stream;' >> /etc/nginx/nginx.conf
+RUN echo '' >> /etc/nginx/nginx.conf
+RUN echo '    server {' >> /etc/nginx/nginx.conf
+RUN echo '        listen 80;' >> /etc/nginx/nginx.conf
+RUN echo '        server_name localhost;' >> /etc/nginx/nginx.conf
+RUN echo '        root /var/www/html;' >> /etc/nginx/nginx.conf
+RUN echo '        index index.html index.htm;' >> /etc/nginx/nginx.conf
+RUN echo '' >> /etc/nginx/nginx.conf
+RUN echo '        location / {' >> /etc/nginx/nginx.conf
+RUN echo '            try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf
+RUN echo '        }' >> /etc/nginx/nginx.conf
+RUN echo '' >> /etc/nginx/nginx.conf
+RUN echo '        location /api {' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_pass http://localhost:10000;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_http_version 1.1;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header Upgrade $http_upgrade;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header Connection "upgrade";' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header Host $host;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header X-Real-IP $remote_addr;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;' >> /etc/nginx/nginx.conf
+RUN echo '            proxy_set_header X-Forwarded-Proto $scheme;' >> /etc/nginx/nginx.conf
+RUN echo '        }' >> /etc/nginx/nginx.conf
 RUN echo '    }' >> /etc/nginx/nginx.conf
-RUN echo '    location /api {' >> /etc/nginx/nginx.conf
-RUN echo '      proxy_pass http://localhost:10000;' >> /etc/nginx/nginx.conf
-RUN echo '      proxy_set_header Host $host;' >> /etc/nginx/nginx.conf
-RUN echo '    }' >> /etc/nginx/nginx.conf
-RUN echo '  }' >> /etc/nginx/nginx.conf
 RUN echo '}' >> /etc/nginx/nginx.conf
 
 # ========== START SCRIPT ==========
