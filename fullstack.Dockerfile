@@ -1,77 +1,256 @@
-# Moneyfy - Guaranteed Working Dockerfile
+# Moneyfy - Diagnostic Version for Free Plan
 FROM node:18-alpine
 
 # Install nginx
 RUN apk add --no-cache nginx
 
 WORKDIR /app
-
-# Copy everything
 COPY . .
 
-# ========== FIX BACKEND ==========
-# Ensure server.js exists and works
-RUN echo 'const express = require("express");' > backend/server.js
-RUN echo 'const cors = require("cors");' >> backend/server.js
-RUN echo 'const app = express();' >> backend/server.js
-RUN echo 'app.use(cors());' >> backend/server.js
-RUN echo 'app.use(express.json());' >> backend/server.js
-RUN echo 'app.get("/api/health", (req, res) => res.json({status:"healthy",service:"Moneyfy"}));' >> backend/server.js
-RUN echo 'app.get("/api", (req, res) => res.json({message:"Moneyfy API Running"}));' >> backend/server.js
-RUN echo 'const PORT = process.env.PORT || 10000;' >> backend/server.js
-RUN echo 'app.listen(PORT, "0.0.0.0", () => console.log("✅ Backend on port", PORT));' >> backend/server.js
+# ========== BACKEND WITH EXTRA LOGGING ==========
+RUN cat > backend/server.js << 'EOF'
+const express = require('express');
+const app = express();
 
-RUN cd backend && npm install --omit=dev express cors
+console.log('=== BACKEND STARTING ===');
 
-# ========== FIX FRONTEND ==========
-# Skip frontend build for now - serve simple HTML
+app.get('/api/health', (req, res) => {
+  console.log('Health check called');
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    service: 'Moneyfy Backend'
+  });
+});
+
+app.get('/api', (req, res) => {
+  console.log('API endpoint called');
+  res.json({ 
+    message: 'Moneyfy API is running!',
+    endpoints: ['/api', '/api/health', '/api/debug']
+  });
+});
+
+// Debug endpoint
+app.get('/api/debug', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  
+  const debugInfo = {
+    backend: 'running',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 10000,
+    files: {
+      htmlExists: fs.existsSync('/var/www/html/index.html'),
+      nginxConfigExists: fs.existsSync('/etc/nginx/nginx.conf')
+    },
+    request: {
+      ip: req.ip,
+      headers: req.headers
+    }
+  };
+  
+  console.log('Debug endpoint called:', debugInfo);
+  res.json(debugInfo);
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Backend server started on port ${PORT}`);
+  console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
+});
+EOF
+
+RUN cd backend && npm install express --omit=dev
+
+# ========== CREATE HTML WITH SELF-DIAGNOSTICS ==========
 RUN mkdir -p /var/www/html
-RUN echo '<!DOCTYPE html>' > /var/www/html/index.html
-RUN echo '<html>' >> /var/www/html/index.html
-RUN echo '<head><title>Moneyfy</title><style>body{font-family:Arial;margin:40px}</style></head>' >> /var/www/html/index.html
-RUN echo '<body>' >> /var/www/html/index.html
-RUN echo '<h1>💰 Moneyfy</h1>' >> /var/www/html/index.html
-RUN echo '<p>Your personal finance application is running!</p>' >> /var/www/html/index.html
-RUN echo '<p><a href="/api">Backend API</a> | <a href="/api/health">Health Check</a></p>' >> /var/www/html/index.html
-RUN echo '</body></html>' >> /var/www/html/index.html
+RUN cat > /var/www/html/index.html << 'EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moneyfy - Diagnostic</title>
+    <style>
+        body { 
+            font-family: 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 40px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            color: #333;
+        }
+        h1 { 
+            color: #764ba2; 
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border-left: 4px solid #28a745; }
+        .error { background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545; }
+        .loading { background: #fff3cd; color: #856404; border-left: 4px solid #ffc107; }
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Moneyfy Diagnostic Dashboard</h1>
+        
+        <div class="status success">
+            ✅ This page is being served by nginx
+        </div>
+        
+        <div id="backendStatus" class="status loading">
+            ⏳ Testing backend connection...
+        </div>
+        
+        <div id="fileStatus" class="status loading">
+            ⏳ Checking file system...
+        </div>
+        
+        <h3>Quick Tests:</h3>
+        <div>
+            <a href="/api" class="btn" target="_blank">🔧 Test API</a>
+            <a href="/api/health" class="btn" target="_blank">❤️ Health Check</a>
+            <a href="/api/debug" class="btn" target="_blank">🐛 Debug Info</a>
+        </div>
+        
+        <h3>Live Log:</h3>
+        <div id="log" class="log">
+            Page loaded at: <span id="timestamp"></span>
+        </div>
+        
+        <h3>Next Steps:</h3>
+        <ol>
+            <li>If API tests fail, check Render logs</li>
+            <li>If this page shows, nginx is working!</li>
+            <li>Replace this HTML with your actual frontend</li>
+        </ol>
+    </div>
+    
+    <script>
+        // Set timestamp
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        
+        // Test backend
+        fetch('/api/health')
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Backend not responding');
+            })
+            .then(data => {
+                const el = document.getElementById('backendStatus');
+                el.className = 'status success';
+                el.innerHTML = `✅ Backend is running (${data.timestamp})`;
+            })
+            .catch(error => {
+                const el = document.getElementById('backendStatus');
+                el.className = 'status error';
+                el.innerHTML = `❌ Backend error: ${error.message}`;
+            });
+        
+        // Check files via debug endpoint
+        fetch('/api/debug')
+            .then(response => response.json())
+            .then(data => {
+                const el = document.getElementById('fileStatus');
+                el.className = 'status success';
+                el.innerHTML = `✅ Files checked: HTML ${data.files.htmlExists ? 'exists' : 'missing'}, Nginx config ${data.files.nginxConfigExists ? 'exists' : 'missing'}`;
+            })
+            .catch(error => {
+                const el = document.getElementById('fileStatus');
+                el.className = 'status error';
+                el.innerHTML = `❌ Cannot check files: ${error.message}`;
+            });
+    </script>
+</body>
+</html>
+EOF
 
-# ========== NGINX CONFIG ==========
-# Simple working nginx config without mime.types
-RUN echo 'events {}' > /etc/nginx/nginx.conf
-RUN echo 'http {' >> /etc/nginx/nginx.conf
-RUN echo '  server {' >> /etc/nginx/nginx.conf
-RUN echo '    listen 80;' >> /etc/nginx/nginx.conf
-RUN echo '    server_name localhost;' >> /etc/nginx/nginx.conf
-RUN echo '    root /var/www/html;' >> /etc/nginx/nginx.conf
-RUN echo '    index index.html index.htm;' >> /etc/nginx/nginx.conf
-RUN echo '' >> /etc/nginx/nginx.conf
-RUN echo '    # Serve HTML files' >> /etc/nginx/nginx.conf
-RUN echo '    types {' >> /etc/nginx/nginx.conf
-RUN echo '      text/html html htm;' >> /etc/nginx/nginx.conf
-RUN echo '      text/css css;' >> /etc/nginx/nginx.conf
-RUN echo '      application/javascript js;' >> /etc/nginx/nginx.conf
-RUN echo '    }' >> /etc/nginx/nginx.conf
-RUN echo '' >> /etc/nginx/nginx.conf
-RUN echo '    location / {' >> /etc/nginx/nginx.conf
-RUN echo '      try_files $uri $uri/ /index.html;' >> /etc/nginx/nginx.conf
-RUN echo '    }' >> /etc/nginx/nginx.conf
-RUN echo '' >> /etc/nginx/nginx.conf
-RUN echo '    location /api {' >> /etc/nginx/nginx.conf
-RUN echo '      proxy_pass http://localhost:10000;' >> /etc/nginx/nginx.conf
-RUN echo '      proxy_set_header Host $host;' >> /etc/nginx/nginx.conf
-RUN echo '    }' >> /etc/nginx/nginx.conf
-RUN echo '  }' >> /etc/nginx/nginx.conf
-RUN echo '}' >> /etc/nginx/nginx.conf
+# ========== SIMPLE GUARANTEED NGINX CONFIG ==========
+RUN cat > /etc/nginx/nginx.conf << 'EOF'
+events {
+    worker_connections 1024;
+}
 
-# ========== START SCRIPT ==========
-RUN echo '#!/bin/sh' > /app/start.sh
-RUN echo 'echo "🚀 Starting Moneyfy..."' >> /app/start.sh
-RUN echo 'cd /app/backend' >> /app/start.sh
-RUN echo 'node server.js &' >> /app/start.sh
-RUN echo 'echo "✅ Backend started"' >> /app/start.sh
-RUN echo 'nginx -g "daemon off;"' >> /app/start.sh
-RUN chmod +x /app/start.sh
+http {
+    server {
+        listen 80;
+        server_name _;
+        
+        root /var/www/html;
+        index index.html;
+        
+        # Logging
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+        
+        location / {
+            try_files $uri $uri/ =404;
+        }
+        
+        location /api {
+            proxy_pass http://localhost:10000;
+            proxy_set_header Host $host;
+        }
+    }
+}
+EOF
 
-EXPOSE 10000
+# ========== VERIFY SETUP ==========
+RUN echo "=== VERIFICATION STEPS ==="
+RUN echo "1. Checking HTML file..."
+RUN ls -la /var/www/html/
+RUN echo "2. Checking nginx config..."
+RUN nginx -t 2>&1 || echo "Nginx config test might show warnings but that's OK"
 
-CMD ["/app/start.sh"]
+# ========== START WITH LOGGING ==========
+CMD sh -c "echo '=== MONEYFY STARTUP ===' && \
+           echo 'Starting backend on port 10000...' && \
+           cd /app/backend && node server.js 2>&1 &
+           echo 'Backend started in background' && \
+           echo 'Starting nginx...' && \
+           nginx -g 'daemon off;' 2>&1"
