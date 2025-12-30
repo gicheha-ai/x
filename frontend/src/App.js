@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext/AuthProvider';
+import AuthProvider from './context/AuthContext/AuthProvider';
 import { CartProvider } from './context/CartContext/CartProvider';
 import { ProductProvider } from './context/ProductContext/ProductProvider';
 import { SuperAdminProvider } from './context/SuperAdminContext/SuperAdminProvider';
