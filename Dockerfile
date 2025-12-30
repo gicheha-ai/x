@@ -1,10 +1,8 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Copy everything
 COPY frontend/ .
 
-# Create guaranteed package.json
+# Create proper package.json
 RUN cat > package.json << 'EOF'
 {
   "name": "moneyfy-frontend",
@@ -27,105 +25,103 @@ RUN cat > package.json << 'EOF'
 }
 EOF
 
-# Install
 RUN npm install
 
-# NUCLEAR FIX: Create a script that rewrites ALL imports correctly
-RUN cat > nuclear-fix.js << 'EOF'
+# Create the ULTIMATE fix script
+RUN cat > ultimate-fix.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
-console.log('=== NUCLEAR FIX STARTING ===');
+console.log('=== ULTIMATE FIX STARTING ===');
 
-// 1. First, check ALL provider files to see how they export
-const providerFiles = {};
-const providerDirs = ['AuthContext', 'ProductContext', 'CartContext', 'OrderContext', 'UserContext', 'SuperAdminContext'];
+// Find ALL provider files and their correct paths
+const providerPaths = {};
+const contextDirs = fs.readdirSync(path.join('src', 'context')).filter(dir => 
+    fs.statSync(path.join('src', 'context', dir)).isDirectory()
+);
 
-providerDirs.forEach(dir => {
-    const providerPath = path.join('src', 'context', dir, dir.replace('Context', 'Provider') + '.js');
+contextDirs.forEach(dir => {
+    const providerFile = dir.replace('Context', 'Provider') + '.js';
+    const providerPath = path.join('src', 'context', dir, providerFile);
+    
     if (fs.existsSync(providerPath)) {
-        const content = fs.readFileSync(providerPath, 'utf8');
-        providerFiles[dir.replace('Context', 'Provider')] = content.includes('export default') ? 'default' : 'named';
-        console.log(`${dir.replace('Context', 'Provider')}: ${providerFiles[dir.replace('Context', 'Provider')]} export`);
+        providerPaths[dir.replace('Context', 'Provider')] = `./context/${dir}/${providerFile}`;
+        console.log(`Found ${dir.replace('Context', 'Provider')} at: ./context/${dir}/${providerFile}`);
     }
 });
 
-// 2. Fix ALL JavaScript files
-function fixAllFiles(dir) {
-    const items = fs.readdirSync(dir);
+// Fix ALL JavaScript/JSX files
+function fixAllFiles(currentDir) {
+    const items = fs.readdirSync(currentDir);
     
     for (const item of items) {
-        const fullPath = path.join(dir, item);
+        const fullPath = path.join(currentDir, item);
         const stat = fs.statSync(fullPath);
         
         if (stat.isDirectory()) {
             fixAllFiles(fullPath);
-        } else if (item.endsWith('.js') || item.endsWith('.jsx')) {
+        } else if (item.endsWith('.js') || item.endsWith('.jsx') || item.endsWith('.ts') || item.endsWith('.tsx')) {
             let content = fs.readFileSync(fullPath, 'utf8');
+            let changed = false;
             
-            // FIX 1: Hook imports - convert ALL to correct relative paths
-            // Calculate how many levels deep this file is
+            // Fix 1: Hook imports (convert to correct relative path)
             const relativeToSrc = path.relative('src', path.dirname(fullPath));
             const depth = relativeToSrc === '' ? 0 : relativeToSrc.split(path.sep).length;
-            const correctPrefix = '../'.repeat(depth) || './';
+            const correctHookPath = '../'.repeat(depth) + 'hooks/';
             
-            content = content.replace(/from\s+['"](\.\.\/)+hooks\/([^'"]+)['"]/g, `from '${correctPrefix}hooks/$2'`);
+            const hookRegex = /from\s+['"](\.\.\/)+hooks\/([^'"]+)['"]/g;
+            if (hookRegex.test(content)) {
+                content = content.replace(hookRegex, `from '${correctHookPath}$2'`);
+                changed = true;
+            }
             
-            // FIX 2: Provider imports - fix based on actual export type
-            for (const [provider, exportType] of Object.entries(providerFiles)) {
-                const regex = new RegExp(`import\\s+\\{\\s*${provider}\\s*\\}\\s+from\\s+['"][^'"]+['"]`, 'g');
-                if (regex.test(content)) {
-                    if (exportType === 'default') {
-                        // Change named import to default import
-                        content = content.replace(
-                            new RegExp(`import\\s+\\{\\s*${provider}\\s*\\}\\s+from\\s+['"]([^'"]+)['"]`),
-                            `import ${provider} from '$1'`
-                        );
+            // Fix 2: Provider imports - ensure correct path and import style
+            for (const [provider, correctPath] of Object.entries(providerPaths)) {
+                // Pattern for this provider with any path
+                const providerRegex = new RegExp(`import\\s+(?:\\{\\s*${provider}\\s*\\}|${provider})\\s+from\\s+['"]([^'"]*${provider}(?:\\.js)?)['"]`, 'g');
+                
+                let match;
+                while ((match = providerRegex.exec(content)) !== null) {
+                    const currentImport = match[0];
+                    const newImport = `import ${provider} from '${correctPath}'`;
+                    
+                    if (currentImport !== newImport) {
+                        content = content.replace(currentImport, newImport);
+                        changed = true;
+                        console.log(`Fixed ${provider} import in ${path.relative(process.cwd(), fullPath)}`);
                     }
-                    // If named export, leave as is
                 }
             }
             
-            // FIX 3: Also fix any remaining problematic patterns
-            content = content.replace(/import\s+\{\s*([A-Za-z]+Provider)\s*\}\s+from\s+['"]([^'"]+)['"]/g, `import $1 from '$2'`);
+            // Fix 3: Also fix imports ending with just Context (missing Provider.js)
+            const contextRegex = /import\s+([A-Za-z]+Provider)\s+from\s+['"]\.\/context\/([A-Za-z]+Context)(?!\/)['"]/g;
+            if (contextRegex.test(content)) {
+                content = content.replace(contextRegex, "import $1 from './context/$2/$1'");
+                changed = true;
+            }
             
-            fs.writeFileSync(fullPath, content);
+            if (changed) {
+                fs.writeFileSync(fullPath, content);
+            }
         }
     }
 }
 
 fixAllFiles('src');
 
-// 3. Also move hooks if needed
-if (fs.existsSync('src/hooks')) {
-    console.log('Copying hooks to node_modules...');
-    fs.mkdirSync('node_modules/hooks', { recursive: true });
-    const hookFiles = fs.readdirSync('src/hooks');
-    hookFiles.forEach(file => {
-        fs.copyFileSync(path.join('src/hooks', file), path.join('node_modules/hooks', file));
-    });
-}
+// Create jsconfig.json for absolute imports
+const jsconfig = {
+    compilerOptions: {
+        baseUrl: "src"
+    },
+    include: ["src"]
+};
+fs.writeFileSync('jsconfig.json', JSON.stringify(jsconfig, null, 2));
 
-console.log('=== NUCLEAR FIX COMPLETE ===');
+console.log('=== ULTIMATE FIX COMPLETE ===');
 EOF
 
-RUN node nuclear-fix.js
-
-# Verify the fixes
-RUN echo "=== Verification ===" && \
-    echo "1. Checking hook imports..." && \
-    if find src -name "*.js" -o -name "*.jsx" | xargs grep -l "\.\./\.\./\.\./hooks/" 2>/dev/null; then \
-        echo "WARNING: Still found ../../../hooks/ imports"; \
-    else \
-        echo "✓ No ../../../hooks/ imports"; \
-    fi && \
-    echo "2. Checking Provider imports..." && \
-    if find src -name "*.js" -o -name "*.jsx" | xargs grep -l "import {.*Provider}" 2>/dev/null; then \
-        echo "WARNING: Still found named Provider imports"; \
-        find src -name "*.js" -o -name "*.jsx" | xargs grep -l "import {.*Provider}" 2>/dev/null | head -3; \
-    else \
-        echo "✓ No named Provider imports"; \
-    fi
+RUN node ultimate-fix.js
 
 # Build
 RUN npm run build
