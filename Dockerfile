@@ -1,21 +1,47 @@
-# Use Node.js LTS version
-FROM node:18-alpine
+# Build stage
+FROM node:18-alpine AS builder
 
-# Create app directory
-WORKDIR /usr/src/app
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY frontend/package*.json ./
 
 # Install dependencies
-# Copy package.json and package-lock.json
-COPY package*.json ./
+RUN npm install
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Copy frontend source code
+COPY frontend/ .
 
-# Copy app source code
-COPY . .
+# Build the React application
+RUN npm run build
 
-# Expose the port your backend runs on
-EXPOSE 3000
+# Production stage
+FROM nginx:alpine
 
-# Start the application
-CMD ["node", "server.js"]
+# Copy built files from builder stage
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Basic nginx configuration for React SPA (handles client-side routing)
+RUN echo 'server {\
+    listen 80;\
+    server_name _;\
+    \
+    location / {\
+        root /usr/share/nginx/html;\
+        index index.html index.htm;\
+        try_files $uri $uri/ /index.html;\
+    }\
+    \
+    # Enable gzip compression\
+    gzip on;\
+    gzip_vary on;\
+    gzip_min_length 1024;\
+    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;\
+}' > /etc/nginx/conf.d/default.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
