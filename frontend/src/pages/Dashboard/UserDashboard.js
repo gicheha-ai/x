@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useCart } from '../../../hooks/useCart';
+import { useCart } from '../../hooks/useCart';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
 import './Dashboard.css';
 

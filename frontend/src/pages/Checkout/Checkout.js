@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useCart } from '../../../hooks/useCart';
+import { useCart } from '../../hooks/useCart';
 import PaymentMethods from '../../components/PaymentMethods/PaymentMethods';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
 import './Checkout.css';

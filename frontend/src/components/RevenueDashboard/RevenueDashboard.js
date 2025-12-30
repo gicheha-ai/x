@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useRevenue } from '../../../hooks/useRevenue';
-import { useLinkGenerator } from '../../../hooks/useLinkGenerator';
+import { useRevenue } from '../../hooks/useRevenue';
+import { useLinkGenerator } from '../../hooks/useLinkGenerator';
 import './RevenueDashboard.css';
 
 const RevenueDashboard = () => {

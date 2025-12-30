@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLinkGenerator } from '../../../hooks/useLinkGenerator';
+import { useLinkGenerator } from '../../hooks/useLinkGenerator';
 import './LinkGenerator.css';
 
 const LinkGenerator = () => {
