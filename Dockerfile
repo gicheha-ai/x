@@ -4,7 +4,7 @@ WORKDIR /app
 # Copy frontend
 COPY frontend/ .
 
-# Overwrite package.json
+# Fix package.json
 RUN cat > package.json << 'EOF'
 {
   "name": "moneyfy-frontend",
@@ -29,36 +29,25 @@ EOF
 
 RUN npm install
 
-# NUCLEAR OPTION: MOVE HOOKS OUT OF SRC/ entirely
+# Move hooks out of src/ if they exist
 RUN if [ -d "src/hooks" ]; then \
-    echo "Moving hooks out of src/..."; \
+    echo "Moving hooks..."; \
     mkdir -p hooks; \
-    mv src/hooks/* hooks/; \
-    rmdir src/hooks; \
-    # Update ALL imports to point to the new location \
-    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from ['\"][^'\"]*/hooks/|from '../../hooks/|g" 2>/dev/null || true; \
+    mv src/hooks/* hooks/ 2>/dev/null || true; \
+    rmdir src/hooks 2>/dev/null || true; \
 fi
 
-# Also copy hooks to node_modules for CRA
-RUN if [ -d "hooks" ]; then \
-    echo "Copying hooks to node_modules..."; \
-    mkdir -p node_modules/hooks; \
-    cp -r hooks/* node_modules/hooks/ 2>/dev/null || true; \
+# Fix syntax errors in App.js (missing semicolon at line 3:61)
+RUN if [ -f "src/App.js" ]; then \
+    echo "Fixing syntax errors in App.js..."; \
+    # Add semicolon at position 61 of line 3 \
+    sed -i '3s/\(.\{60\}\)/\1;/' src/App.js 2>/dev/null || \
+    # Or just show the problematic line \
+    echo "Line 3 of App.js:" && sed -n '3p' src/App.js; \
 fi
 
-# Simple fix for Provider imports
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { AuthContext } from|import { AuthContext } from './context/AuthContext/AuthContext'|g" 2>/dev/null || true
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import AuthProvider from|import AuthProvider from './context/AuthContext/AuthProvider'|g" 2>/dev/null || true
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { ProductContext } from|import { ProductContext } from './context/ProductContext/ProductContext'|g" 2>/dev/null || true
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import ProductProvider from|import ProductProvider from './context/ProductContext/ProductProvider'|g" 2>/dev/null || true
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { CartContext } from|import { CartContext } from './context/CartContext/CartContext'|g" 2>/dev/null || true
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import CartProvider from|import CartProvider from './context/CartContext/CartProvider'|g" 2>/dev/null || true
-
-# Show structure
-RUN echo "=== Structure ===" && \
-    find . -name "*hook*" -o -name "*Hook*" | head -10 && \
-    ls -la hooks/ 2>/dev/null || echo "No hooks folder" && \
-    ls -la node_modules/hooks/ 2>/dev/null || echo "No hooks in node_modules"
+# Also fix common syntax errors in all files
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i 's/from "\.\.\/\.\.\/\.\.\/hooks\//from "..\/..\/hooks\//g' 2>/dev/null || true
 
 # Build
 RUN npm run build
