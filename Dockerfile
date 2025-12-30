@@ -1,11 +1,21 @@
-FROM node:18-alpine AS builder
-WORKDIR /app
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ .
-RUN npm run build
+# Use Node.js LTS version
+FROM node:18-alpine
 
-FROM nginx:alpine
-COPY --from=builder /app/build /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install dependencies
+# Copy package.json and package-lock.json
+COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --only=production
+
+# Copy app source code
+COPY . .
+
+# Expose the port your backend runs on
+EXPOSE 3000
+
+# Start the application
+CMD ["node", "server.js"]
