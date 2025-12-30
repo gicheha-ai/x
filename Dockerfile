@@ -56,8 +56,8 @@ app.get('/api/debug', (req, res) => {
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ Backend server started on port ${PORT}`);
-  console.log(`✅ Health check: http://0.0.0.0:${PORT}/api/health`);
+  console.log(\`✅ Backend server started on port \${PORT}\`);
+  console.log(\`✅ Health check: http://0.0.0.0:\${PORT}/api/health\`);
 });
 EOF
 
@@ -184,12 +184,12 @@ RUN cat > /var/www/html/index.html << 'EOF'
             .then(data => {
                 const el = document.getElementById('backendStatus');
                 el.className = 'status success';
-                el.innerHTML = `✅ Backend is running (${data.timestamp})`;
+                el.innerHTML = \`✅ Backend is running (\${data.timestamp})\`;
             })
             .catch(error => {
                 const el = document.getElementById('backendStatus');
                 el.className = 'status error';
-                el.innerHTML = `❌ Backend error: ${error.message}`;
+                el.innerHTML = \`❌ Backend error: \${error.message}\`;
             });
         
         // Check files via debug endpoint
@@ -198,12 +198,12 @@ RUN cat > /var/www/html/index.html << 'EOF'
             .then(data => {
                 const el = document.getElementById('fileStatus');
                 el.className = 'status success';
-                el.innerHTML = `✅ Files checked: HTML ${data.files.htmlExists ? 'exists' : 'missing'}, Nginx config ${data.files.nginxConfigExists ? 'exists' : 'missing'}`;
+                el.innerHTML = \`✅ Files checked: HTML \${data.files.htmlExists ? 'exists' : 'missing'}, Nginx config \${data.files.nginxConfigExists ? 'exists' : 'missing'}\`;
             })
             .catch(error => {
                 const el = document.getElementById('fileStatus');
                 el.className = 'status error';
-                el.innerHTML = `❌ Cannot check files: ${error.message}`;
+                el.innerHTML = \`❌ Cannot check files: \${error.message}\`;
             });
     </script>
 </body>
@@ -247,10 +247,16 @@ RUN ls -la /var/www/html/
 RUN echo "2. Checking nginx config..."
 RUN nginx -t 2>&1 || echo "Nginx config test might show warnings but that's OK"
 
-# ========== START WITH LOGGING ==========
-CMD sh -c "echo '=== MONEYFY STARTUP ===' && \
-           echo 'Starting backend on port 10000...' && \
-           cd /app/backend && node server.js 2>&1 &
-           echo 'Backend started in background' && \
-           echo 'Starting nginx...' && \
-           nginx -g 'daemon off;' 2>&1"
+# ========== START SCRIPT ==========
+RUN echo '#!/bin/sh' > /app/start.sh
+RUN echo 'echo "=== MONEYFY STARTUP ==="' >> /app/start.sh
+RUN echo 'echo "Starting backend on port 10000..."' >> /app/start.sh
+RUN echo 'cd /app/backend && node server.js &' >> /app/start.sh
+RUN echo 'echo "Backend started in background"' >> /app/start.sh
+RUN echo 'echo "Starting nginx..."' >> /app/start.sh
+RUN echo 'nginx -g "daemon off;"' >> /app/start.sh
+RUN chmod +x /app/start.sh
+
+EXPOSE 10000
+
+CMD ["/app/start.sh"]
