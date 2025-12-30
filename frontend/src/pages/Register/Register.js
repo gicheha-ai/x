@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
 import './Register.css';
 

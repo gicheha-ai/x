@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import RevenueDashboard from '../../components/RevenueDashboard/RevenueDashboard';
 import LinkGenerator from '../../components/LinkGenerator/LinkGenerator';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import { useCart } from '../../../hooks/useCart';
 import SearchBar from '../SearchBar/SearchBar';
 import SideMenu from '../SideMenu/SideMenu';

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../hooks/useAuth';
 import LoadingSpinner from '../../components/LoadingSpinner/LoadingSpinner';
 import BoostProductModal from '../../components/BoostProductModal/BoostProductModal';
 import './BoostSales.css';
