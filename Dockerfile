@@ -9,12 +9,8 @@ COPY frontend/package*.json ./
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the frontend source code
+# Copy the entire frontend directory (including src/hooks/)
 COPY frontend/ .
-
-# Copy hooks from root directory into src/hooks
-# This solves the "import outside src/" error
-COPY hooks/ ./src/hooks/
 
 # Build the application
 RUN npm run build
@@ -24,9 +20,6 @@ FROM nginx:alpine
 
 # Copy built files from builder stage to nginx
 COPY --from=builder /app/build /usr/share/nginx/html
-
-# Copy custom nginx configuration if needed
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
