@@ -1,8 +1,10 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
+
+# Copy frontend
 COPY frontend/ .
 
-# Create proper package.json
+# Overwrite package.json
 RUN cat > package.json << 'EOF'
 {
   "name": "moneyfy-frontend",
@@ -27,128 +29,36 @@ EOF
 
 RUN npm install
 
-# Create SMART fix script that understands context vs provider
-RUN cat > smart-fix.js << 'EOF'
-const fs = require('fs');
-const path = require('path');
+# NUCLEAR OPTION: MOVE HOOKS OUT OF SRC/ entirely
+RUN if [ -d "src/hooks" ]; then \
+    echo "Moving hooks out of src/..."; \
+    mkdir -p hooks; \
+    mv src/hooks/* hooks/; \
+    rmdir src/hooks; \
+    # Update ALL imports to point to the new location \
+    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from ['\"][^'\"]*/hooks/|from '../../hooks/|g" 2>/dev/null || true; \
+fi
 
-console.log('=== SMART FIX ===');
+# Also copy hooks to node_modules for CRA
+RUN if [ -d "hooks" ]; then \
+    echo "Copying hooks to node_modules..."; \
+    mkdir -p node_modules/hooks; \
+    cp -r hooks/* node_modules/hooks/ 2>/dev/null || true; \
+fi
 
-// Map of what each file exports
-const exportMap = {};
+# Simple fix for Provider imports
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { AuthContext } from|import { AuthContext } from './context/AuthContext/AuthContext'|g" 2>/dev/null || true
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import AuthProvider from|import AuthProvider from './context/AuthContext/AuthProvider'|g" 2>/dev/null || true
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { ProductContext } from|import { ProductContext } from './context/ProductContext/ProductContext'|g" 2>/dev/null || true
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import ProductProvider from|import ProductProvider from './context/ProductContext/ProductProvider'|g" 2>/dev/null || true
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import { CartContext } from|import { CartContext } from './context/CartContext/CartContext'|g" 2>/dev/null || true
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import CartProvider from|import CartProvider from './context/CartContext/CartProvider'|g" 2>/dev/null || true
 
-// Scan all context and provider files
-function scanExports() {
-    const contextDir = path.join('src', 'context');
-    if (!fs.existsSync(contextDir)) return;
-    
-    const contexts = fs.readdirSync(contextDir).filter(item => 
-        fs.statSync(path.join(contextDir, item)).isDirectory()
-    );
-    
-    contexts.forEach(ctx => {
-        const ctxDir = path.join(contextDir, ctx);
-        const files = fs.readdirSync(ctxDir);
-        
-        files.forEach(file => {
-            if (file.endsWith('.js') || file.endsWith('.jsx')) {
-                const filePath = path.join(ctxDir, file);
-                const content = fs.readFileSync(filePath, 'utf8');
-                const baseName = path.basename(file, path.extname(file));
-                
-                // Check what this file exports
-                if (content.includes('export default')) {
-                    exportMap[baseName] = { type: 'default', path: `./context/${ctx}/${file}` };
-                } else if (content.includes('export const') || content.includes('export {')) {
-                    // Extract exported names
-                    const exportMatches = content.match(/export\s+(?:const|let|var|function|class)\s+([A-Za-z0-9_]+)/g) || [];
-                    const namedExports = content.match(/export\s+\{\s*([^}]+)\s*\}/g) || [];
-                    
-                    exportMatches.forEach(match => {
-                        const name = match.match(/export\s+(?:const|let|var|function|class)\s+([A-Za-z0-9_]+)/)[1];
-                        exportMap[name] = { type: 'named', path: `./context/${ctx}/${file}` };
-                    });
-                    
-                    namedExports.forEach(match => {
-                        const names = match.match(/export\s+\{\s*([^}]+)\s*\}/)[1].split(',').map(n => n.trim());
-                        names.forEach(name => {
-                            exportMap[name] = { type: 'named', path: `./context/${ctx}/${file}` };
-                        });
-                    });
-                }
-            }
-        });
-    });
-}
-
-scanExports();
-console.log('Export map:', Object.keys(exportMap).join(', '));
-
-// Fix all files
-function fixAllFiles(dir) {
-    const items = fs.readdirSync(dir);
-    
-    for (const item of items) {
-        const fullPath = path.join(dir, item);
-        const stat = fs.statSync(fullPath);
-        
-        if (stat.isDirectory()) {
-            fixAllFiles(fullPath);
-        } else if (item.endsWith('.js') || item.endsWith('.jsx')) {
-            let content = fs.readFileSync(fullPath, 'utf8');
-            let changed = false;
-            
-            // Find all imports
-            const importRegex = /import\s+(?:(\{[^}]+\})|([^'"{}\n]+))\s+from\s+['"]([^'"]+)['"]/g;
-            let match;
-            
-            while ((match = importRegex.exec(content)) !== null) {
-                const importStatement = match[0];
-                const importWhat = match[1] || match[2]; // {Named} or default
-                const importFrom = match[3];
-                
-                // Check if this import needs fixing
-                if (importWhat && importFrom) {
-                    // Extract imported names
-                    let importedNames = [];
-                    if (importWhat.startsWith('{')) {
-                        // Named import: { AuthContext, something }
-                        importedNames = importWhat.slice(1, -1).split(',').map(n => n.trim());
-                    } else {
-                        // Default import: AuthContext
-                        importedNames = [importWhat.trim()];
-                    }
-                    
-                    // Check each imported name
-                    for (const name of importedNames) {
-                        if (exportMap[name] && !importFrom.includes(name)) {
-                            // This import is wrong - fix it
-                            const newImport = importWhat.startsWith('{') ? 
-                                `import { ${name} } from '${exportMap[name].path}'` :
-                                `import ${name} from '${exportMap[name].path}'`;
-                            
-                            // Replace just this specific import
-                            content = content.replace(importStatement, newImport);
-                            changed = true;
-                            console.log(`Fixed ${name} import in ${path.relative(process.cwd(), fullPath)}`);
-                            break; // Move to next import statement
-                        }
-                    }
-                }
-            }
-            
-            if (changed) {
-                fs.writeFileSync(fullPath, content);
-            }
-        }
-    }
-}
-
-fixAllFiles('src');
-console.log('=== SMART FIX COMPLETE ===');
-EOF
-
-RUN node smart-fix.js
+# Show structure
+RUN echo "=== Structure ===" && \
+    find . -name "*hook*" -o -name "*Hook*" | head -10 && \
+    ls -la hooks/ 2>/dev/null || echo "No hooks folder" && \
+    ls -la node_modules/hooks/ 2>/dev/null || echo "No hooks in node_modules"
 
 # Build
 RUN npm run build
