@@ -1,0 +1,17 @@
+cd C:\Users\Administrator\Desktop\x
+
+# Create .dockerignore file
+echo node_modules > .dockerignore
+echo .git >> .dockerignore
+echo *.log >> .dockerignore
+echo .env >> .dockerignore
+echo .env.local >> .dockerignore
+echo .env.development.local >> .dockerignore
+echo .env.test.local >> .dockerignore
+echo .env.production.local >> .dockerignore
+echo .DS_Store >> .dockerignore
+echo build/ >> .dockerignore
+echo dist/ >> .dockerignore
+echo coverage >> .dockerignore
+echo frontend/node_modules >> .dockerignore
+echo frontend/build >> .dockerignore

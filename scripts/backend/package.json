@@ -1,5 +1,5 @@
 {
-  "name": "ecommerce-pro-backend",
+  "name": "moneyfy-backend",
   "version": "1.0.0",
   "description": "Backend API for E-Commerce Pro Platform with super admin features",
   "main": "src/server.js",
