@@ -1,4 +1,4 @@
 import React from 'react';
-import { ProductProvider } from './ProductContext';
+import ProductProvider from './ProductContext';
 
 export default ProductProvider;

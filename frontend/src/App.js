@@ -1,10 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AuthProvider from './context/AuthContext/AuthProvider';
-import { CartProvider } from './context/CartContext/CartProvider';
-import { ProductProvider } from './context/ProductContext/ProductProvider';
-import { SuperAdminProvider } from './context/SuperAdminContext/SuperAdminProvider';
-import { RevenueProvider } from './context/RevenueContext/RevenueProvider';
+import CartProvider from './context/CartContext/CartProvider';
+import ProductProvider from './context/ProductContext/ProductProvider';
+import SuperAdminProvider from './context/SuperAdminContext/SuperAdminProvider';
+import RevenueProvider from './context/RevenueContext/RevenueProvider';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import Header from './components/Header/Header';
 import HomePage from './pages/HomePage/HomePage';
