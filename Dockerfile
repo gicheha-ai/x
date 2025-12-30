@@ -27,77 +27,114 @@ EOF
 
 RUN npm install
 
-# Create the ULTIMATE fix script
-RUN cat > ultimate-fix.js << 'EOF'
+# Create SMART fix script that understands context vs provider
+RUN cat > smart-fix.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
-console.log('=== ULTIMATE FIX STARTING ===');
+console.log('=== SMART FIX ===');
 
-// Find ALL provider files and their correct paths
-const providerPaths = {};
-const contextDirs = fs.readdirSync(path.join('src', 'context')).filter(dir => 
-    fs.statSync(path.join('src', 'context', dir)).isDirectory()
-);
+// Map of what each file exports
+const exportMap = {};
 
-contextDirs.forEach(dir => {
-    const providerFile = dir.replace('Context', 'Provider') + '.js';
-    const providerPath = path.join('src', 'context', dir, providerFile);
+// Scan all context and provider files
+function scanExports() {
+    const contextDir = path.join('src', 'context');
+    if (!fs.existsSync(contextDir)) return;
     
-    if (fs.existsSync(providerPath)) {
-        providerPaths[dir.replace('Context', 'Provider')] = `./context/${dir}/${providerFile}`;
-        console.log(`Found ${dir.replace('Context', 'Provider')} at: ./context/${dir}/${providerFile}`);
-    }
-});
+    const contexts = fs.readdirSync(contextDir).filter(item => 
+        fs.statSync(path.join(contextDir, item)).isDirectory()
+    );
+    
+    contexts.forEach(ctx => {
+        const ctxDir = path.join(contextDir, ctx);
+        const files = fs.readdirSync(ctxDir);
+        
+        files.forEach(file => {
+            if (file.endsWith('.js') || file.endsWith('.jsx')) {
+                const filePath = path.join(ctxDir, file);
+                const content = fs.readFileSync(filePath, 'utf8');
+                const baseName = path.basename(file, path.extname(file));
+                
+                // Check what this file exports
+                if (content.includes('export default')) {
+                    exportMap[baseName] = { type: 'default', path: `./context/${ctx}/${file}` };
+                } else if (content.includes('export const') || content.includes('export {')) {
+                    // Extract exported names
+                    const exportMatches = content.match(/export\s+(?:const|let|var|function|class)\s+([A-Za-z0-9_]+)/g) || [];
+                    const namedExports = content.match(/export\s+\{\s*([^}]+)\s*\}/g) || [];
+                    
+                    exportMatches.forEach(match => {
+                        const name = match.match(/export\s+(?:const|let|var|function|class)\s+([A-Za-z0-9_]+)/)[1];
+                        exportMap[name] = { type: 'named', path: `./context/${ctx}/${file}` };
+                    });
+                    
+                    namedExports.forEach(match => {
+                        const names = match.match(/export\s+\{\s*([^}]+)\s*\}/)[1].split(',').map(n => n.trim());
+                        names.forEach(name => {
+                            exportMap[name] = { type: 'named', path: `./context/${ctx}/${file}` };
+                        });
+                    });
+                }
+            }
+        });
+    });
+}
 
-// Fix ALL JavaScript/JSX files
-function fixAllFiles(currentDir) {
-    const items = fs.readdirSync(currentDir);
+scanExports();
+console.log('Export map:', Object.keys(exportMap).join(', '));
+
+// Fix all files
+function fixAllFiles(dir) {
+    const items = fs.readdirSync(dir);
     
     for (const item of items) {
-        const fullPath = path.join(currentDir, item);
+        const fullPath = path.join(dir, item);
         const stat = fs.statSync(fullPath);
         
         if (stat.isDirectory()) {
             fixAllFiles(fullPath);
-        } else if (item.endsWith('.js') || item.endsWith('.jsx') || item.endsWith('.ts') || item.endsWith('.tsx')) {
+        } else if (item.endsWith('.js') || item.endsWith('.jsx')) {
             let content = fs.readFileSync(fullPath, 'utf8');
             let changed = false;
             
-            // Fix 1: Hook imports (convert to correct relative path)
-            const relativeToSrc = path.relative('src', path.dirname(fullPath));
-            const depth = relativeToSrc === '' ? 0 : relativeToSrc.split(path.sep).length;
-            const correctHookPath = '../'.repeat(depth) + 'hooks/';
+            // Find all imports
+            const importRegex = /import\s+(?:(\{[^}]+\})|([^'"{}\n]+))\s+from\s+['"]([^'"]+)['"]/g;
+            let match;
             
-            const hookRegex = /from\s+['"](\.\.\/)+hooks\/([^'"]+)['"]/g;
-            if (hookRegex.test(content)) {
-                content = content.replace(hookRegex, `from '${correctHookPath}$2'`);
-                changed = true;
-            }
-            
-            // Fix 2: Provider imports - ensure correct path and import style
-            for (const [provider, correctPath] of Object.entries(providerPaths)) {
-                // Pattern for this provider with any path
-                const providerRegex = new RegExp(`import\\s+(?:\\{\\s*${provider}\\s*\\}|${provider})\\s+from\\s+['"]([^'"]*${provider}(?:\\.js)?)['"]`, 'g');
+            while ((match = importRegex.exec(content)) !== null) {
+                const importStatement = match[0];
+                const importWhat = match[1] || match[2]; // {Named} or default
+                const importFrom = match[3];
                 
-                let match;
-                while ((match = providerRegex.exec(content)) !== null) {
-                    const currentImport = match[0];
-                    const newImport = `import ${provider} from '${correctPath}'`;
+                // Check if this import needs fixing
+                if (importWhat && importFrom) {
+                    // Extract imported names
+                    let importedNames = [];
+                    if (importWhat.startsWith('{')) {
+                        // Named import: { AuthContext, something }
+                        importedNames = importWhat.slice(1, -1).split(',').map(n => n.trim());
+                    } else {
+                        // Default import: AuthContext
+                        importedNames = [importWhat.trim()];
+                    }
                     
-                    if (currentImport !== newImport) {
-                        content = content.replace(currentImport, newImport);
-                        changed = true;
-                        console.log(`Fixed ${provider} import in ${path.relative(process.cwd(), fullPath)}`);
+                    // Check each imported name
+                    for (const name of importedNames) {
+                        if (exportMap[name] && !importFrom.includes(name)) {
+                            // This import is wrong - fix it
+                            const newImport = importWhat.startsWith('{') ? 
+                                `import { ${name} } from '${exportMap[name].path}'` :
+                                `import ${name} from '${exportMap[name].path}'`;
+                            
+                            // Replace just this specific import
+                            content = content.replace(importStatement, newImport);
+                            changed = true;
+                            console.log(`Fixed ${name} import in ${path.relative(process.cwd(), fullPath)}`);
+                            break; // Move to next import statement
+                        }
                     }
                 }
-            }
-            
-            // Fix 3: Also fix imports ending with just Context (missing Provider.js)
-            const contextRegex = /import\s+([A-Za-z]+Provider)\s+from\s+['"]\.\/context\/([A-Za-z]+Context)(?!\/)['"]/g;
-            if (contextRegex.test(content)) {
-                content = content.replace(contextRegex, "import $1 from './context/$2/$1'");
-                changed = true;
             }
             
             if (changed) {
@@ -108,20 +145,10 @@ function fixAllFiles(currentDir) {
 }
 
 fixAllFiles('src');
-
-// Create jsconfig.json for absolute imports
-const jsconfig = {
-    compilerOptions: {
-        baseUrl: "src"
-    },
-    include: ["src"]
-};
-fs.writeFileSync('jsconfig.json', JSON.stringify(jsconfig, null, 2));
-
-console.log('=== ULTIMATE FIX COMPLETE ===');
+console.log('=== SMART FIX COMPLETE ===');
 EOF
 
-RUN node ultimate-fix.js
+RUN node smart-fix.js
 
 # Build
 RUN npm run build
