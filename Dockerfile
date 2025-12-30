@@ -1,19 +1,22 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
+
+# Copy everything
 COPY frontend/ .
 
-# Move hooks to where imports expect them (at build root)
+# CRITICAL: Copy hooks to node_modules/hooks BEFORE npm install
 RUN if [ -d "hooks" ]; then \
-    echo "Hooks found at project root"; \
-    # Copy hooks to node_modules as CRA suggests \
+    echo "Copying hooks to node_modules/hooks..."; \
     mkdir -p node_modules/hooks; \
     cp -r hooks/* node_modules/hooks/; \
-    # Also create at root for ../../../ imports \
-    mkdir -p ../../hooks; \
-    cp -r hooks/* ../../hooks/ 2>/dev/null || true; \
+    echo "✓ Hooks copied to node_modules"; \
 else \
-    echo "No hooks folder found"; \
+    echo "No hooks directory found"; \
+    find . -name "*hook*" -type f | head -5; \
 fi
+
+# Also fix import paths in source code
+RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from ['\"]../../../hooks/|from 'hooks/'|g" 2>/dev/null || true
 
 RUN npm install
 RUN npm run build
