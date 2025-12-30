@@ -1,96 +1,131 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 COPY frontend/ .
-RUN cat > fix-all-imports.js << 'EOF'
+
+# Fix package.json first if needed
+RUN cat > ensure-package.js << 'EOF'
+const fs = require('fs');
+
+try {
+    let pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    
+    // Ensure required dependencies exist
+    const requiredDeps = {
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0", 
+        "react-scripts": "5.0.1",
+        "web-vitals": "^2.1.4",
+        "react-router-dom": "^6.0.0",
+        "axios": "^1.6.0"
+    };
+    
+    let changed = false;
+    for (const [dep, version] of Object.entries(requiredDeps)) {
+        if (!pkg.dependencies || !pkg.dependencies[dep]) {
+            pkg.dependencies = pkg.dependencies || {};
+            pkg.dependencies[dep] = version;
+            changed = true;
+        }
+    }
+    
+    if (changed) {
+        fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2));
+        console.log('Updated package.json with missing dependencies');
+    }
+} catch (err) {
+    console.error('Error with package.json:', err.message);
+    // Create a fresh package.json
+    const freshPkg = {
+        name: "moneyfy-frontend",
+        version: "0.1.0",
+        private: true,
+        dependencies: {
+            "react": "^18.2.0",
+            "react-dom": "^18.2.0",
+            "react-scripts": "5.0.1",
+            "web-vitals": "^2.1.4",
+            "react-router-dom": "^6.0.0",
+            "axios": "^1.6.0"
+        },
+        scripts: {
+            "start": "react-scripts start",
+            "build": "react-scripts build",
+            "test": "react-scripts test",
+            "eject": "react-scripts eject"
+        }
+    };
+    fs.writeFileSync('package.json', JSON.stringify(freshPkg, null, 2));
+    console.log('Created fresh package.json');
+}
+EOF
+
+RUN node ensure-package.js
+
+# Install dependencies
+RUN npm install
+
+# Fix ALL imports
+RUN cat > fix-imports.js << 'EOF'
 const fs = require('fs');
 const path = require('path');
 
-console.log('Fixing ALL import issues...');
+console.log('Fixing imports...');
 
-// Fix ALL files recursively
-function fixDirectory(dir) {
-    const items = fs.readdirSync(dir);
+function fixFile(filePath) {
+    let content = fs.readFileSync(filePath, 'utf8');
+    const original = content;
     
-    for (const item of items) {
+    // Fix hook imports: ANY ../ before hooks/
+    content = content.replace(
+        /from\s+['"](\.\.\/)+hooks\/([^'"]+)['"]/g,
+        (match, dots, hookName) => {
+            const dotCount = (dots.match(/\.\.\//g) || []).length;
+            const newDots = '../'.repeat(Math.max(1, dotCount - 1));
+            return `from '${newDots}hooks/${hookName}'`;
+        }
+    );
+    
+    // Fix Provider imports: remove braces
+    content = content.replace(
+        /import\s+\{\s*([A-Za-z]+Provider)\s*\}\s+from\s+['"]([^'"]+)['"]/g,
+        "import $1 from '$2'"
+    );
+    
+    if (content !== original) {
+        fs.writeFileSync(filePath, content);
+        console.log('Fixed:', path.relative(process.cwd(), filePath));
+    }
+}
+
+function walkDir(dir) {
+    fs.readdirSync(dir).forEach(item => {
         const fullPath = path.join(dir, item);
         const stat = fs.statSync(fullPath);
         
         if (stat.isDirectory()) {
-            fixDirectory(fullPath);
-        } else if (item.endsWith('.js') || item.endsWith('.jsx') || item.endsWith('.ts') || item.endsWith('.tsx')) {
-            let content = fs.readFileSync(fullPath, 'utf8');
-            const original = content;
-            
-            // FIX 1: All hook imports - replace ANY number of ../ before hooks/
-            // Matches: ../../../hooks/, ../../hooks/, ../hooks/
-            content = content.replace(
-                /from\s+['"](\.\.\/)+hooks\/([^'"]+)['"]/g,
-                (match, dots, hookName) => {
-                    // Count how many ../ we have
-                    const dotCount = (dots.match(/\.\.\//g) || []).length;
-                    // We need to go up 2 levels from src/ to get to src/hooks/
-                    // So if we have 3 ../ (../../../), convert to 2 ../ (../../)
-                    // If we have 2 ../ (../../), convert to 1 ../ (../)
-                    // If we have 1 ../ (../), keep as is (already inside src/)
-                    const newDots = '../'.repeat(Math.max(1, dotCount - 1));
-                    return `from '${newDots}hooks/${hookName}'`;
-                }
-            );
-            
-            // FIX 2: All Provider imports - remove braces
-            // Matches: import { SomethingProvider } from '...SomethingProvider'
-            content = content.replace(
-                /import\s+\{\s*([A-Za-z]+Provider)\s*\}\s+from\s+['"]([^'"]+)['"]/g,
-                "import $1 from '$2'"
-            );
-            
-            // FIX 3: Also fix imports with extra spaces or newlines
-            content = content.replace(
-                /import\s*\{\s*([A-Za-z]+Provider)\s*\}\s*from\s*['"]([^'"]+)['"]/g,
-                "import $1 from '$2'"
-            );
-            
-            if (content !== original) {
-                fs.writeFileSync(fullPath, content);
-                console.log('✓ Fixed:', path.relative(process.cwd(), fullPath));
-            }
+            walkDir(fullPath);
+        } else if (/\.(js|jsx|ts|tsx)$/.test(item)) {
+            fixFile(fullPath);
         }
-    }
+    });
 }
 
-// Also create a symlink for hooks if needed (as error suggests)
-try {
-    if (!fs.existsSync('node_modules/hooks')) {
-        fs.mkdirSync('node_modules/hooks', { recursive: true });
-        // Create symlink from src/hooks to node_modules/hooks
-        if (fs.existsSync('src/hooks')) {
-            // Note: We can't create symlinks easily in Docker build context
-            // Instead, we'll copy the hooks to a location that satisfies the import
-            fs.cpSync('src/hooks', 'node_modules/hooks', { recursive: true });
-            console.log('✓ Copied hooks to node_modules/hooks');
-        }
-    }
-} catch (err) {
-    console.log('Note:', err.message);
-}
-
-fixDirectory('src');
-console.log('\n✓ All imports fixed!');
+walkDir('src');
+console.log('✓ All imports fixed');
 EOF
 
-RUN node fix-all-imports.js
+RUN node fix-imports.js
 
-# Verify fixes
-RUN echo "=== Verifying no more ../../../hooks/ imports ===" && \
+# Verify no problematic imports remain
+RUN echo "=== Verifying imports ===" && \
     if find src -type f \( -name "*.js" -o -name "*.jsx" \) -exec grep -l "\.\./\.\./\.\./hooks/" {} + >/dev/null 2>&1; then \
-        echo "ERROR: Still found problematic hook imports:"; \
-        find src -type f \( -name "*.js" -o -name "*.jsx" \) -exec grep -l "\.\./\.\./\.\./hooks/" {} + | head -5; \
+        echo "ERROR: Still found hook imports with ../../../"; \
         exit 1; \
     else \
-        echo "✓ No more ../../../hooks/ imports"; \
+        echo "✓ No problematic hook imports"; \
     fi
 
-# Build
+# Build the app
 RUN npm run build
 
 FROM nginx:alpine
