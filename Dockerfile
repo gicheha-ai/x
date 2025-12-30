@@ -1,30 +1,57 @@
 FROM node:18-alpine AS builder
 WORKDIR /app
 
-# Copy everything
+# 1. Copy frontend
 COPY frontend/ .
 
-# Create guaranteed correct package.json
-RUN echo '{"name":"moneyfy-frontend","version":"0.1.0","private":true,"dependencies":{"react":"^18.2.0","react-dom":"^18.2.0","react-scripts":"5.0.1","web-vitals":"^2.1.4","react-router-dom":"^6.0.0","axios":"^1.6.0"},"scripts":{"start":"react-scripts start","build":"react-scripts build","test":"react-scripts test","eject":"react-scripts eject"}}' > package.json
+# 2. Create proper package.json
+RUN cat > package.json << 'EOF'
+{
+  "name": "moneyfy-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4",
+    "react-router-dom": "^6.0.0",
+    "axios": "^1.6.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  }
+}
+EOF
 
-# Install
+# 3. Install
 RUN npm install
 
-# Create a SYMLINK solution instead of fixing imports
-# This satisfies Create React App's restriction
+# 4. CRITICAL: Copy hooks to the EXACT location imports expect
+# Imports like ../../../hooks/ expect hooks to be 3 levels up from src/
+# So we need hooks at the BUILD CONTEXT root (outside src/)
 RUN if [ -d "src/hooks" ]; then \
-    echo "Creating symlinks for hooks..."; \
-    ln -sf ../src/hooks node_modules/hooks 2>/dev/null || true; \
+    echo "Copying hooks to build context root..."; \
+    mkdir -p hooks; \
+    cp -r src/hooks/* hooks/; \
 fi
 
-# Also copy hooks to where imports expect them
+# 5. Also copy to node_modules/hooks as backup
 RUN if [ -d "src/hooks" ]; then \
-    echo "Copying hooks for imports..."; \
+    echo "Copying hooks to node_modules..."; \
     mkdir -p node_modules/hooks; \
-    cp -r src/hooks/* node_modules/hooks/ 2>/dev/null || true; \
+    cp -r src/hooks/* node_modules/hooks/; \
 fi
 
-# Build
+# 6. Verify structure
+RUN echo "=== Current structure ===" && \
+    find . -name "hooks" -type d | xargs -I {} sh -c 'echo "Directory: {}"; ls -la {}' && \
+    echo "========================"
+
+# 7. Build
 RUN npm run build
 
 FROM nginx:alpine
