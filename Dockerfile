@@ -1,7 +1,6 @@
 # Build stage
 FROM node:18-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
 # Copy package files
@@ -13,6 +12,10 @@ RUN npm install
 # Copy frontend source code
 COPY frontend/ .
 
+# Fix ALL import paths during build
+RUN find src -type f \( -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" \) \
+    -exec sed -i "s|from '../../../hooks/|from '../../hooks/|g" {} + 2>/dev/null || true
+
 # Build the React application
 RUN npm run build
 
@@ -22,26 +25,16 @@ FROM nginx:alpine
 # Copy built files from builder stage
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Basic nginx configuration for React SPA (handles client-side routing)
-RUN echo 'server {\
-    listen 80;\
-    server_name _;\
-    \
-    location / {\
-        root /usr/share/nginx/html;\
-        index index.html index.htm;\
-        try_files $uri $uri/ /index.html;\
-    }\
-    \
-    # Enable gzip compression\
-    gzip on;\
-    gzip_vary on;\
-    gzip_min_length 1024;\
-    gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;\
+# Nginx configuration for React SPA
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    location / { \
+        root /usr/share/nginx/html; \
+        index index.html index.htm; \
+        try_files $uri $uri/ /index.html; \
+    } \
 }' > /etc/nginx/conf.d/default.conf
 
-# Expose port 80
 EXPOSE 80
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
