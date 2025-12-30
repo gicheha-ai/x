@@ -29,25 +29,24 @@ EOF
 
 RUN npm install
 
-# Move hooks out of src/ if they exist
-RUN if [ -d "src/hooks" ]; then \
-    echo "Moving hooks..."; \
-    mkdir -p hooks; \
-    mv src/hooks/* hooks/ 2>/dev/null || true; \
-    rmdir src/hooks 2>/dev/null || true; \
-fi
+# FIX: Remove semicolons from inside import strings
+RUN echo "Fixing import paths with stray semicolons..." && \
+    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from '\([^']*\);'|from '\1'|g" 2>/dev/null || true && \
+    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from \"\([^\"]*\);\"|from \"\1\"|g" 2>/dev/null || true
 
-# Fix syntax errors in App.js (missing semicolon at line 3:61)
-RUN if [ -f "src/App.js" ]; then \
-    echo "Fixing syntax errors in App.js..."; \
-    # Add semicolon at position 61 of line 3 \
-    sed -i '3s/\(.\{60\}\)/\1;/' src/App.js 2>/dev/null || \
-    # Or just show the problematic line \
-    echo "Line 3 of App.js:" && sed -n '3p' src/App.js; \
-fi
+# Also fix other common issues
+RUN echo "Fixing other import issues..." && \
+    # Fix hook imports \
+    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|from ['\"][^'\"]*/hooks/|from '../../hooks/|g" 2>/dev/null || true && \
+    # Fix AuthProvider imports \
+    find src -name "*.js" -o -name "*.jsx" | xargs sed -i "s|import AuthProvider from ['\"][^'\"]*AuthProvider[^'\"]*['\"]|import AuthProvider from './context/AuthContext/AuthProvider'|g" 2>/dev/null || true
 
-# Also fix common syntax errors in all files
-RUN find src -name "*.js" -o -name "*.jsx" | xargs sed -i 's/from "\.\.\/\.\.\/\.\.\/hooks\//from "..\/..\/hooks\//g' 2>/dev/null || true
+# Show problematic lines
+RUN echo "=== Checking for problematic imports ===" && \
+    find src -name "*.js" -o -name "*.jsx" -exec grep -l "AuthProvider;" {} + 2>/dev/null | while read file; do \
+        echo "File: $file"; \
+        grep -n "AuthProvider;" "$file" | head -5; \
+    done
 
 # Build
 RUN npm run build
