@@ -1,0 +1,86 @@
+{
+  "name": "ecommerce-pro-backend",
+  "version": "1.0.0",
+  "description": "Backend API for E-Commerce Pro Platform with super admin features",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/**/*.js",
+    "seed:superadmin": "node src/seeds/superAdminSeed.js",
+    "seed:categories": "node src/seeds/categoriesSeed.js",
+    "seed:products": "node src/seeds/productsSeed.js",
+    "seed:all": "npm run seed:superadmin && npm run seed:categories && npm run seed:products",
+    "db:migrate": "node src/database/migrate.js",
+    "db:reset": "node src/database/reset.js"
+  },
+  "keywords": [
+    "ecommerce",
+    "marketplace",
+    "super-admin",
+    "affiliate",
+    "revenue-tracking"
+  ],
+  "author": "E-Commerce Pro Platform",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "multer": "^1.4.5-lts.1",
+    "cloudinary": "^1.40.0",
+    "stripe": "^13.5.0",
+    "paypal-rest-sdk": "^1.8.1",
+    "nodemailer": "^6.9.6",
+    "socket.io": "^4.7.2",
+    "crypto": "^1.0.1",
+    "moment": "^2.29.4",
+    "winston": "^3.10.0",
+    "compression": "^1.7.4",
+    "express-mongo-sanitize": "^2.2.0",
+    "xss-clean": "^0.1.4",
+    "hpp": "^0.2.3",
+    "express-useragent": "^1.0.15",
+    "geoip-lite": "^1.4.9",
+    "ua-parser-js": "^1.0.35",
+    "redis": "^4.6.8",
+    "ioredis": "^5.3.2",
+    "axios": "^1.5.0",
+    "cron": "^3.0.3",
+    "node-cron": "^3.0.2",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.4",
+    "supertest": "^6.3.3",
+    "eslint": "^8.48.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "prettier": "^3.0.3",
+    "cross-env": "^7.0.3"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ecommerce-pro-platform.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ecommerce-pro-platform/issues"
+  },
+  "homepage": "https://github.com/yourusername/ecommerce-pro-platform#readme"
+}
